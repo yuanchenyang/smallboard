@@ -16,8 +16,53 @@ from django.core.management.utils import get_random_secret_key
 import logging
 import os
 
-
 logger = logging.getLogger(__name__)
+
+
+##############################################################################
+ACTIVE_HUNT_ID = 1
+if not ACTIVE_HUNT_ID:
+    logger.warn("No ACTIVE_HUNT_ID set. Links may not work properly.")
+
+
+# Google Drive API
+from settings import \
+    GOOGLE_DRIVE_HUNT_FOLDER_ID, \
+    GOOGLE_SHEETS_TEMPLATE_FILE_ID, \
+    GOOGLE_API_AUTHN_INFO
+
+GOOGLE_DRIVE_PERMISSIONS_SCOPES = ['https://www.googleapis.com/auth/drive']
+
+if not GOOGLE_DRIVE_HUNT_FOLDER_ID or not GOOGLE_SHEETS_TEMPLATE_FILE_ID:
+    GOOGLE_API_AUTHN_INFO = None
+    logger.warn('GOOGLE_DRIVE_HUNT_FOLDER_ID or GOOGLE_SHEETS_TEMPLATE_FILE_ID not set. '
+                'Automatic sheets creation disabled.')
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'smallboard',
+        'USER': 'myuser',
+        'PASSWORD': 'mypass',
+        'HOST': 'localhost',
+        'PORT': '',
+        #'OPTIONS': {'sslmode':'disable'}
+    }
+}
+
+# Slack API
+SLACK_BASE_URL = "https://taiwansgpuzzl-beu4708.slack.com"
+if SLACK_BASE_URL:
+    SLACK_BASE_URL = SLACK_BASE_URL.rstrip('/')
+else:
+    logger.warn('No SLACK_BASE_URL configured. Slack links will not work.')
+
+SLACK_API_TOKEN = None
+if not SLACK_API_TOKEN:
+    logger.warn('No SLACK_API_TOKEN environment variable set. All Slack operations will be no-ops.')
+
+##############################################################################
+
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,7 +84,7 @@ DEBUG = bool(strtobool(os.environ.get('DEBUG', 'True')))
 ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost',
-    'smallboard.herokuapp.com',
+    'smallboard.chenyang.co',
 ]
 
 
@@ -147,53 +192,18 @@ django_heroku.settings(locals(), test_runner=False)
 
 import dj_database_url
 
-DATABASES = {}
-DATABASES['default'] = dj_database_url.config(conn_max_age=600, ssl_require=False)
-DATABASES['default']['TEST'] = {
-    'NAME': 'test_smallboard'
-}
+#DATABASES = {}
 
-ACTIVE_HUNT_ID = os.environ.get("ACTIVE_HUNT_ID", '')
-if not ACTIVE_HUNT_ID:
-    logger.warn("No ACTIVE_HUNT_ID set. Links may not work properly.")
 
-# Google Drive API
-GOOGLE_API_AUTHN_INFO = None
-if not 'GOOGLE_API_PRIVATE_KEY' in os.environ:
-    logger.warn('No Google Drive API key found in environment. Automatic sheets creation disabled.')
-else:
-    GOOGLE_API_AUTHN_INFO = {
-      "type": "service_account",
-      "project_id": "smallboard-test-260001",
-      "private_key_id": "ca6bf4b1c0db884c0a0cf490839c375f63dab3af",
-      "private_key": os.environ['GOOGLE_API_PRIVATE_KEY'].replace('\\n', '\n'),
-      "client_email": "smallboard-test@smallboard-test-260001.iam.gserviceaccount.com",
-      "client_id": "108658192634408271921",
-      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-      "token_uri": "https://oauth2.googleapis.com/token",
-      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/smallboard-test%40smallboard-test-260001.iam.gserviceaccount.com"
-    }
-    GOOGLE_DRIVE_PERMISSIONS_SCOPES = ['https://www.googleapis.com/auth/drive']
-    GOOGLE_DRIVE_HUNT_FOLDER_ID = os.environ.get('GOOGLE_DRIVE_HUNT_FOLDER_ID', None)
-    GOOGLE_SHEETS_TEMPLATE_FILE_ID = os.environ.get('GOOGLE_SHEETS_TEMPLATE_FILE_ID', None)
 
-    if not GOOGLE_DRIVE_HUNT_FOLDER_ID or not GOOGLE_SHEETS_TEMPLATE_FILE_ID:
-        GOOGLE_API_AUTHN_INFO = None
-        logger.warn('GOOGLE_DRIVE_HUNT_FOLDER_ID or GOOGLE_SHEETS_TEMPLATE_FILE_ID not set. '
-                    'Automatic sheets creation disabled.')
+#DATABASES['default'] = dj_database_url.config(conn_max_age=600, ssl_require=False)
+#DATABASES['default']['TEST'] = {
+#    'NAME': 'test_smallboard'
+#}
 
-# Slack API
-SLACK_BASE_URL = os.environ.get("SLACK_BASE_URL", None)
-if SLACK_BASE_URL:
-    SLACK_BASE_URL = SLACK_BASE_URL.rstrip('/')
-else:
-    logger.warn('No SLACK_BASE_URL configured. Slack links will not work.')
 
-# TODO(erwa): Validate that SLACK_API_TOKEN works for SLACK_BASE_URL workspace.
-SLACK_API_TOKEN = os.environ.get("SLACK_API_TOKEN", None)
-if not SLACK_API_TOKEN:
-    logger.warn('No SLACK_API_TOKEN environment variable set. All Slack operations will be no-ops.')
+
+
 
 AUTHENTICATION_BACKENDS = [
     'social_core.backends.google.GoogleOAuth2',
@@ -212,11 +222,12 @@ if not SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET:
 from google_api_lib.google_api_client import GoogleApiClient
 
 google_api_client = GoogleApiClient.getInstance()
-if google_api_client:
-    SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_EMAILS = google_api_client.get_file_user_emails(GOOGLE_DRIVE_HUNT_FOLDER_ID)
-    logger.info('Whitelisted emails: ' + str(SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_EMAILS))
-else:
-    logger.warn('Google Drive integration not set up. All emails will be accepted.')
+# if google_api_client:
+#     SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_EMAILS = google_api_client.get_file_user_emails(GOOGLE_DRIVE_HUNT_FOLDER_ID)
+#     logger.info('Whitelisted emails: ' + str(SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_EMAILS))
+# else:
+#     logger.warn('Google Drive integration not set up. All emails will be accepted.')
+logger.warn('Google Drive integration not set up. All emails will be accepted.')
 
 # Taggit Overrides
 TAGGIT_TAGS_FROM_STRING = 'puzzles.tag_utils.to_tag'

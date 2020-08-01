@@ -1,11 +1,11 @@
 import logging
 import os
 import re
-import slack
+from slackclient import SlackClient as WebClient
 
 from django.conf import settings
 from puzzles.models import is_unassigned_channel
-from slack.errors import SlackApiError
+from slackclient.exceptions import SlackClientError as SlackApiError
 
 
 _logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ class SlackClient:
             token = settings.SLACK_API_TOKEN
             if token:
                 self._enabled = True
-                self._web_client = slack.WebClient(token=token)
+                self._web_client = WebClient(token=token)
                 self.announcement_channel_name = announcement_channel_name
                 self.answer_queue_channel_name = answer_queue_channel_name
             else:
@@ -141,8 +141,8 @@ class SlackClient:
         try:
             # If channel exists, it will join. Otherwise, it will create and then
             # join.
-            response = self._web_client.channels_join(name=channel_name,
-                                                      validate=True)
+            response = self._web_client.conversations_join(name=channel_name,
+                                                           validate=True)
         except SlackApiError as e:
             if e.response['error'] == 'is_archived':
                 self.unarchive_channel(self.get_channel_id(channel_name))
@@ -198,7 +198,7 @@ class SlackClient:
         if not self._enabled:
             return
 
-        self._web_client.channels_join(channel=channel_name)
+        self._web_client.conversations_join(channel=channel_name)
 
 
     def get_user_email(self, user_id):
@@ -237,4 +237,3 @@ class SlackClient:
         except SlackApiError as e:
             _logger.warn('Encountered error unarchiving channel %s: %s'
                 % (channel_id, e))
-
