@@ -26,7 +26,7 @@ if not ACTIVE_HUNT_ID:
 
 
 # Google Drive API
-from settings import \
+from secrets import \
     GOOGLE_DRIVE_HUNT_FOLDER_ID, \
     GOOGLE_SHEETS_TEMPLATE_FILE_ID, \
     GOOGLE_API_AUTHN_INFO

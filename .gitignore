@@ -151,7 +151,10 @@ test/
 *.swo
 *.swn
 
+# Emacs
+*~
+
 # Smallboard
 staticfiles/
 logfile
-/smallboard/secrets.py
+/secrets.py
